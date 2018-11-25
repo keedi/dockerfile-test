@@ -1,0 +1,29 @@
+FROM perl:5.26.2-slim-threaded
+LABEL maintainer="Keedi Kim <keedi@cpan.org>"
+
+WORKDIR /tmp
+
+RUN true \
+    && apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends \
+        apt-utils \
+    && apt-get install -y --no-install-recommends \
+        gcc \
+        libmariadbclient-dev \
+        make \
+        netbase \
+    && cpanm \
+        Minion \
+        Minion::Backend::mysql \
+        Mojolicious \
+    && savedPackages="make netbase libmariadbclient18" \
+    && apt-mark auto '.*' > /dev/null \
+    && apt-mark manual $savedPackages \
+    && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
+    && rm -fr /var/cache/apt/* /var/lib/apt/lists/* \
+    && rm -fr ./cpanm /root/.cpanm /usr/src/perl /tmp/*
+
+WORKDIR /root
+
+CMD [ "perl5.26.2", "-de0" ]
