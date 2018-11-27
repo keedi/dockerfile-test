@@ -1,24 +1,50 @@
 #
-# docker build --file Dockerfile.perl-5.26.2 --tag keedi/perl-5.26.2 .
+# docker build --tag keedi/perl-5.26.2 .
+# docker build --network net-cache --tag keedi/perl-5.26.2 .
 #
 #   docker run -it --rm --name=con-extract keedi/perl-5.26.2:latest /bin/bash
-#       tar cvzf /root/perl-5.26.2-site_perl.tar.gz -C /usr/local/lib/perl5/site_perl 5.26.2
+#       tar cvzf /tmp/app-perl.tar.gz -C /app perl
 #
-#   docker cp con-extract:/root/perl-5.26.2-site_perl.tar.gz ./static/
+#   docker cp con-extract:/tmp/app-perl.tar.gz app-perl.tar.gz
 #
 FROM perl:5.26.2-slim-threaded
 LABEL maintainer="Keedi Kim <keedi@cpan.org>"
 
+ENV DEBIAN_FRONTEND="noninteractive"
+
+#
+# apt caching
+#
+COPY sources.list /etc/apt/sources.list
+RUN true \
+    && apt-get update \
+    && apt-get install -y squid-deb-proxy-client
+COPY apt-proxy.conf /etc/apt/apt.conf.d/30autoproxy
+RUN apt-get update
+
+#
+# for perl
+#
+RUN mkdir -p /app/perl
+ENV \
+    PATH="/app/perl/bin:$PATH" \
+    PERL5LIB="/app/perl/lib/perl5:$PERL5LIB" \
+    PERL_CPANM_OPT="-l /app/perl --mirror http://cpan.silex.kr" \
+    PERL_LOCAL_LIB_ROOT="/app/perl" \
+    PERL_MB_OPT="--install_base /app/perl" \
+    PERL_MM_OPT="INSTALL_BASE=/app/perl"
+
 #
 # for fast build
 #
-COPY static/perl-5.26.2-site_perl.tar.gz ./
-RUN tar xvzf perl-5.26.2-site_perl.tar.gz -C /usr/local/lib/perl5/site_perl
+COPY app-perl.tar.gz /tmp
+RUN true \
+    && tar xvzf /tmp/app-perl.tar.gz -C /app/perl --strip-components=1 \
+    && rm -rf app-perl.tar.gz
 
 #
 # preparing to build
 #
-ENV DEBIAN_FRONTEND=noninteractive
 RUN true \
     && apt-get update \
     && apt-get upgrade -y \
@@ -92,10 +118,8 @@ RUN true \
     && cpanm \
         Capture::Tiny \
         Class::Tiny \
-        DateTime \
         DateTime::Tiny \
         HTTP::Tiny \
-        Log::Log4perl \
         Log::Log4perl::Tiny \
         Path::Tiny \
         Try::Tiny
@@ -107,6 +131,8 @@ RUN cpanm Moo
 RUN cpanm Moose
 RUN cpanm DBIx::Class
 RUN cpanm DBIx::Class::Schema::Loader
+RUN cpanm DateTime
+RUN cpanm Log::Log4perl
 RUN cpanm Plack
 RUN cpanm Ubic
 RUN cpanm Ubic::Service::Hypnotoad
@@ -126,7 +152,6 @@ RUN true \
     && apt-mark manual $savedPackages \
     && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
     && rm -fr /var/cache/apt/* /var/lib/apt/lists/* \
-    && rm -fr ./cpanm /root/.cpanm /usr/src/perl /tmp/* \
-    && rm -fr /root/*.tar.gz
+    && rm -fr ./cpanm /root/.cpanm /usr/src/perl /tmp/*
 
-CMD ["bash"]
+CMD [ "bash" ]
