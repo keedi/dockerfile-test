@@ -147,7 +147,7 @@ RUN true \
 # cleaning
 #
 RUN true \
-    && savedPackages="ca-certificates libc6 libmariadbclient18 libncursesw5 libpq5 libreadline7 make netbase openssl zlib1g" \
+    && savedPackages="ca-certificates libc6 libmariadbclient18 libncursesw5 libpq5 libreadline7 make netbase openssl squid-deb-proxy-client zlib1g" \
     && apt-mark auto '.*' > /dev/null \
     && apt-mark manual $savedPackages \
     && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
