@@ -52,6 +52,20 @@ RUN true \
         apt-utils
 
 #
+# locale & time
+#
+RUN true \
+    && apt-get install -y --no-install-recommends \
+        locales \
+    && locale-gen ko_KR.utf8 \
+    && sed -i -e 's/# ko_KR.UTF-8 UTF-8/ko_KR.UTF-8 UTF-8/' /etc/locale.gen \
+    && dpkg-reconfigure --frontend=noninteractive locales \
+    && update-locale LANG=ko_KR.utf8
+ENV \
+    LANG="ko_KR.utf8" \
+    TZ="Asia/Seoul"
+
+#
 # build tool & lib
 #
 RUN true \
@@ -147,7 +161,7 @@ RUN true \
 # cleaning
 #
 RUN true \
-    && savedPackages="ca-certificates libc6 libmariadbclient18 libncursesw5 libpq5 libreadline7 make netbase openssl squid-deb-proxy-client zlib1g" \
+    && savedPackages="ca-certificates libc6 libmariadbclient18 libncursesw5 libpq5 libreadline7 locales make netbase openssl squid-deb-proxy-client zlib1g" \
     && apt-mark auto '.*' > /dev/null \
     && apt-mark manual $savedPackages \
     && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
